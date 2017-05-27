@@ -8,7 +8,7 @@ import os
 import re
 import sys
 import io
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, element
 
 HOME_PAGE_NAME = 'test.html'
 
@@ -22,14 +22,14 @@ def get_node_link(node):
     return node.parent['href'] if node.parent is not None else None
 
 
-def search_node(page_soup, text):
-    return page_soup.find(text=text)
+def search_node(page_soup, node_name):
+    return page_soup.find(text=node_name)
 
 
-def search_by_path(start_page_soup, texts):
+def search_by_path(start_page_soup, search_path):
     page_soup = start_page_soup
-    for text in texts:
-        node = search_node(page_soup, text)
+    for node_name in search_path:
+        node = search_node(page_soup, node_name)
         if node is None:
             return None
 
@@ -44,45 +44,58 @@ def search_by_path(start_page_soup, texts):
     return page_soup
 
 
-def get_home_page():
+def get_login_params():
     cfg_parser = configparser.ConfigParser()
     with codecs.open('login.conf', 'r', encoding='utf-8') as f:
         cfg_parser.read_file(f)
-    login_params = {'email': cfg_parser.get('account', 'usr'),
-                    'password': cfg_parser.get('account', 'pwd')}
 
+        login_params = {'email': cfg_parser.get('account', 'usr'),
+                        'password': cfg_parser.get('account', 'pwd')}
+
+        return login_params
+
+
+def enum_page(start_page, total_page_cnt):
+    page = start_page
+    page_idx = 1
+    while page is not None:
+        print(page_idx, '{:.2%}'.format(page_idx / total_page_cnt))
+        next_page_node = search_node(page, '下一页')
+        if next_page_node is None:
+            return
+        next_page_link = get_node_link(next_page_node)
+        if next_page_link is None:
+            return
+        page = open_page(next_page_link)
+        if page is None:
+            return
+        page_idx += 1
+
+        chat_msg_node = page.find(class_='list')
+        if chat_msg_node is None:
+            return
+        for chat_msg in chat_msg_node.children:
+            if type(chat_msg) is element.Tag:
+                print(chat_msg)
+
+
+def main():
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_4) AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/52.0.2743.116 Safari/537.36'
     }
-    r = requests.post('http://3g.renren.com/login.do?autoLogin=true', headers=headers, data=login_params)
+    r = requests.post('http://3g.renren.com/login.do?autoLogin=true', headers=headers, data=get_login_params())
     if r.status_code != 200:
         print(r.status_code)
         return
 
-    gossip_page_soup = search_by_path(BeautifulSoup(r.content, 'lxml'), ['个人主页', '留言板'])
-    gossip_soup = BeautifulSoup(gossip_page, 'lxml')
+    gossip_page = search_by_path(BeautifulSoup(r.content, 'lxml'), ['个人主页', '留言板'])
 
-    idx_node = gossip_soup.find('span')
-    total_page_cnt = int(idx_node.string[idx_node.string.find('/') + 1:idx_node.string.find('页')])
+    page_idx_node = gossip_page.find('span')
+    total_page_cnt = int(page_idx_node.string[page_idx_node.string.find('/') + 1:page_idx_node.string.find('页')])
 
-    page_idx = 1
-    print(page_idx)
-    # next_page_node = search_node(open('gossip.html', 'rb'), '下一页')
-    next_page_node = search_node(gossip_page, '下一页')
-    if next_page_node is None:
-        return
-
-    next_page_link = get_node_link(next_page_node)
-    while next_page_link is not None:
-        next_page = open_page(next_page_link)
-        if next_page is None:
-            return
-
-        print(page_idx)
-        next_page_link = search_node(r.content, '下一页')
-        page_idx += 1
+    enum_page(gossip_page, total_page_cnt)
 
 
 if __name__ == '__main__':
-    get_home_page()
+    main()

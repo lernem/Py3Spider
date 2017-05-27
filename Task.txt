@@ -1,0 +1,7 @@
+Read node, analyze sender name(get user ID), reply name, get relation
+
+group msgs by relation: 1. with me 2. two other people's chat
+
+search someone: 1. sender name = target name 2. the name I reply to = target name
+
+show the msg I send to nobody in single group
