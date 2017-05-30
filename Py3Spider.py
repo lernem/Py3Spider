@@ -79,6 +79,22 @@ def enum_page(start_page, total_page_cnt):
                 print(chat_msg)
 
 
+def analyze_relation():
+    pass
+
+
+def get_sender_user_id():
+    pass
+
+
+def get_reply_user_id():
+    pass
+
+
+def group_msg():
+    pass
+
+
 def main():
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_4) AppleWebKit/537.36 (KHTML, like Gecko) '
